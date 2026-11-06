@@ -5,7 +5,6 @@ from contextlib import contextmanager
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 from kubernetes.config.config_exception import ConfigException
-from langchain_core.tools import tool
 from urllib3.exceptions import HTTPError
 
 
@@ -31,7 +30,20 @@ def _result_client(result):
         result["error"] = f"Error connecting to Kubernetes: {exc}"
 
 
-@tool
+def list_namespaces() -> str:
+    """List all namespaces in the Kubernetes cluster, including their status."""
+    result = {}
+    with _result_client(result) as api_client:
+        namespaces = client.CoreV1Api(api_client).list_namespace(
+            _request_timeout=(10, 30)
+        )
+        result["namespaces"] = [{
+            "name": namespace.metadata.name,
+            "phase": namespace.status.phase if namespace.status else None,
+        } for namespace in namespaces.items]
+    return json.dumps(result)
+
+
 def list_pods(namespace: str = "default") -> str:
     """List all pods in a namespace. Omitted or empty namespace means default."""
     namespace = namespace.strip() or "default"
@@ -55,7 +67,6 @@ def list_pods(namespace: str = "default") -> str:
     return json.dumps(result)
 
 
-@tool
 def list_deployments(namespace: str = "default") -> str:
     """List all deployments in a namespace. Omitted or empty namespace means default."""
     namespace = namespace.strip() or "default"
@@ -74,7 +85,6 @@ def list_deployments(namespace: str = "default") -> str:
     return json.dumps(result)
 
 
-@tool
 def list_services(namespace: str = "default") -> str:
     """List all services in a namespace. Omitted or empty namespace means default."""
     namespace = namespace.strip() or "default"
@@ -95,7 +105,6 @@ def list_services(namespace: str = "default") -> str:
     return json.dumps(result)
 
 
-@tool
 def get_pod_logs_and_events(
     pod_name: str, namespace: str = "default", container: str = "",
     tail_lines: int = 100, previous: bool = False,
@@ -145,7 +154,6 @@ def get_pod_logs_and_events(
     return json.dumps(result, default=str)
 
 
-@tool
 def list_nodes() -> str:
     """List all nodes in the Kubernetes cluster selected by the local kubeconfig."""
     try:

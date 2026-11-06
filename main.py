@@ -1,4 +1,5 @@
 import os
+import asyncio
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -7,9 +8,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 
 from graph import build_graph
-from tools import (
-    get_pod_logs_and_events, list_deployments, list_nodes, list_pods, list_services,
-)
+from mcp_client import load_mcp_tools
 
 
 def main():
@@ -18,10 +17,10 @@ def main():
         raise SystemExit("Add OPENAI_API_KEY to the .env file before running this script.")
 
     llm = ChatOpenAI(model="gpt-5.6-luna", use_responses_api=True)
-    tools = [list_nodes, list_pods, list_deployments, list_services, get_pod_logs_and_events]
+    tools = asyncio.run(load_mcp_tools())
     messages = [
         SystemMessage(
-            content="list out all the pods in the default namespace"
+            content="list out all the the namespaces"
         ),
     ]
     graph = build_graph(llm, tools)
